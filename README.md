@@ -41,19 +41,50 @@ mvn package -DskipTests
 
 ```bash
 #!/bin/bash
-# 启动服务
-export $(cat .env | xargs)
-java -jar target/后端服务.jar
+# ------------------------------
+# ECS 启动 Spring Boot (Linux)
+# ------------------------------
+
+ENV_FILE="./.env.ecs"
+
+if [ -f "$ENV_FILE" ]; then
+    echo "加载环境变量文件 $ENV_FILE"
+    export $(grep -v '^#' $ENV_FILE | xargs)
+else
+    echo "警告：$ENV_FILE 文件未找到"
+fi
+
+JAR_PATH="./gradeapp-0.0.1-SNAPSHOT.jar"
+
+if [ -f "$JAR_PATH" ]; then
+    echo "启动 Spring Boot 应用..."
+    nohup java -jar "$JAR_PATH" > app.log 2>&1 &
+    echo "应用已启动，日志输出到 app.log"
+else
+    echo "错误：Jar 文件未找到: $JAR_PATH"
+fi
 ```
 
 - 示例 `stop.sh` 内容：
 
 ```bash
 #!/bin/bash
-# 停止服务
-PID=$(ps -ef | grep 后端服务.jar | grep -v grep | awk '{print $2}')
-if [ -n "$PID" ]; then
+# ------------------------------
+# 停止 ECS 上的 Spring Boot 应用
+# ------------------------------
+
+# 可选：根据 Jar 名称匹配进程
+JAR_NAME="gradeapp-0.0.1-SNAPSHOT.jar"
+
+# 查找正在运行的进程 ID
+PID=$(ps -ef | grep "$JAR_NAME" | grep -v grep | awk '{print $2}')
+
+if [ -z "$PID" ]; then
+    echo "未找到正在运行的 $JAR_NAME 服务"
+else
+    echo "找到 $JAR_NAME 服务，PID=$PID，正在停止..."
     kill -9 $PID
+    echo "服务已停止"
 fi
 ```
 
